@@ -1,34 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronRight, Heart, ShoppingCart } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "@/contexts/ThemeContext"
-import { useCart } from "@/contexts/CartContext"
 import { useWishlist } from "@/contexts/WishlistContext"
 import { useToast } from "@/contexts/ToastContext"
 import LoadingIndicator from "@/components/LoadingIndicator"
-
+import axios from "axios"
 export default function WishlistPage() {
   const { theme } = useTheme()
-  const { addToCart } = useCart()
+  
   const { wishlistItems, removeFromWishlist } = useWishlist()
+  
   const { showToast } = useToast()
   const [isAddingToCart, setIsAddingToCart] = useState({})
   const [isRemoving, setIsRemoving] = useState({})
 
-  const handleAddToCart = (product) => {
-    setIsAddingToCart((prev) => ({ ...prev, [product.id]: true }))
-
-    // Simulate a delay to show loading state
-    setTimeout(() => {
-      addToCart(product)
-      setIsAddingToCart((prev) => ({ ...prev, [product.id]: false }))
-      showToast(`${product.name} added to cart`, "success")
-    }, 500)
-  }
 
   const handleRemoveFromWishlist = (product) => {
     setIsRemoving((prev) => ({ ...prev, [product.id]: true }))
@@ -40,6 +30,41 @@ export default function WishlistPage() {
       showToast(`${product.name} removed from wishlist`, "info")
     }, 500)
   }
+const handleAddToCart = async (product) => {
+  setIsAddingToCart((prev) => ({ ...prev, [product.id]: true }))
+
+  const gettoken = localStorage.getItem("token")
+  if (!gettoken) {
+    showToast("Please login to add items to cart", "error")
+    setIsAddingToCart((prev) => ({ ...prev, [product.id]: false }))
+    return
+  }
+
+  try {
+    const response = await axios.post(
+      "http://localhost:8000/api/cart/add",
+      {
+        productId: product.id,
+        quantity: 1,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${gettoken}`,
+        },
+      }
+    )
+
+    if (response.status === 200) {
+      showToast(`${product.name} added to cart`, "success")
+    }
+  } catch (error) {
+    console.error("Add to cart failed:", error)
+    showToast(`Failed to add ${product.name} to cart`, "error")
+  } finally {
+    setIsAddingToCart((prev) => ({ ...prev, [product.id]: false }))
+  }
+}
+
 
   return (
     <div className={`min-h-screen ${theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
@@ -97,10 +122,10 @@ export default function WishlistPage() {
                     {item.discount > 0 ? (
                       <>
                         <span className="font-bold">${(item.price * (1 - item.discount / 100)).toFixed(2)}</span>
-                        <span className="ml-2 text-sm line-through text-gray-500">${item.price.toFixed(2)}</span>
+                        <span className="ml-2 text-sm line-through text-gray-500">${Number(item.price).toFixed(2)}</span>
                       </>
                     ) : (
-                      <span className="font-bold">${item.price.toFixed(2)}</span>
+                      <span className="font-bold">${Number(item.price).toFixed(2)}</span>
                     )}
                   </div>
                   <div className="flex space-x-2">
@@ -190,3 +215,6 @@ export default function WishlistPage() {
     </div>
   )
 }
+
+
+

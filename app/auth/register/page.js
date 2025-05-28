@@ -1,32 +1,32 @@
 "use client"
 
 import { useState } from "react"
-import { Eye, EyeOff, Mail, Lock } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { useTheme } from "@/contexts/ThemeContext"
+import axios from "axios"
+import { useRouter } from "next/navigation"
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import axios from "axios"
-export default function LoginPage() {
+export default function RegisterPage() {
   const { theme } = useTheme()
+
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
-    rememberMe: false,
   })
   const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }))
-
-    // Clear error when field is updated
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
     }
@@ -35,14 +35,16 @@ export default function LoginPage() {
   const validateForm = () => {
     const newErrors = {}
 
+    if (!formData.name) newErrors.name = "Name is required"
     if (!formData.email) {
       newErrors.email = "Email is required"
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid"
+      newErrors.email = "Invalid email format"
     }
-
     if (!formData.password) {
       newErrors.password = "Password is required"
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters"
     }
 
     setErrors(newErrors)
@@ -51,46 +53,48 @@ export default function LoginPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-
     if (validateForm()) {
       setIsLoading(true)
       try{
         // Simulate API call to register the user
-        axios.post("http://localhost:8000/api/auth/login", formData).then((response) => {
-          if (response.status === 200) {
+        axios.post("http://localhost:8000/api/auth/register", formData).then((response) => {
+          if (response.status === 201) {
             setIsLoading(false)
-     
-            toast.success('Login successfully');
+            // alert("Account created successfully!")
+            toast.success('Registration successful');
             localStorage.setItem('token', response.data.token);
-      setFormData({ email: '', password: '' }); // clear form
+      setFormData({ name: '', email: '', password: '' }); // clear form
             window.location.href = "/"
           } else {
             setIsLoading(false)
-            toast.error('Login failed');
-     
+            toast.error('Registration failed');
+            // alert("Error creating account. Please try again.")
           }
         })
       }
       catch (error) {
         setIsLoading(false)
-        toast.error("Error Login account. Please try again.")
+        toast.error("Error creating account. Please try again.")
+      }finally{
+        setIsLoading(false)
       }
   }
-  }
+}
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
+      className={`min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 ${
+        theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
+      }`}
     >
-       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
-     
+      <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold">Sign in to your account</h2>
+          <h2 className="mt-6 text-3xl font-extrabold">Create your account</h2>
           <p className="mt-2 text-sm text-gray-500">
-            Or{" "}
-            <Link href="/auth/register" className="font-medium text-emerald-600 hover:text-emerald-500">
-              create a new account
+            Already registered?{" "}
+            <Link href="/auth/login" className="font-medium text-emerald-600 hover:text-emerald-500">
+              Sign in
             </Link>
           </p>
         </div>
@@ -102,11 +106,37 @@ export default function LoginPage() {
           className={`rounded-lg shadow-lg p-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
         >
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Name */}
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium">
+                Name
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 pr-3 py-2 rounded-md ${
+                    theme === "dark" ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900"
+                  } ${errors.name ? "border border-red-500" : ""}`}
+                  placeholder="John Doe"
+                />
+              </div>
+              {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+            </div>
+
+            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium">
                 Email address
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
@@ -126,11 +156,12 @@ export default function LoginPage() {
               {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
             </div>
 
+            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium">
                 Password
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
@@ -138,7 +169,7 @@ export default function LoginPage() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   value={formData.password}
                   onChange={handleChange}
                   className={`block w-full pl-10 pr-10 py-2 rounded-md ${
@@ -159,28 +190,7 @@ export default function LoginPage() {
               {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="rememberMe"
-                  type="checkbox"
-                  checked={formData.rememberMe}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <Link href="/auth/forgot-password" className="font-medium text-emerald-600 hover:text-emerald-500">
-                  Forgot your password?
-                </Link>
-              </div>
-            </div>
-
+            {/* Submit Button */}
             <div>
               <button
                 type="submit"
@@ -204,23 +214,21 @@ export default function LoginPage() {
                         r="10"
                         stroke="currentColor"
                         strokeWidth="4"
-                      ></circle>
+                      />
                       <path
                         className="opacity-75"
                         fill="currentColor"
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
+                      />
                     </svg>
-                    Signing in...
+                    Creating account...
                   </>
                 ) : (
-                  "Sign in"
+                  "Register"
                 )}
               </button>
             </div>
           </form>
-
-
         </motion.div>
       </div>
     </div>

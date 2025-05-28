@@ -1,35 +1,120 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Trash2, ShoppingBag, ArrowLeft } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "@/contexts/ThemeContext"
-import { useCart } from "@/contexts/CartContext"
+import axios from "axios"
+import {toast,ToastContainer} from 'react-toastify' // ✅ Import toast
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function CartPage() {
   const { theme } = useTheme()
-  const { cartItems, cartTotal, removeFromCart, updateQuantity, clearCart } = useCart()
   const [couponCode, setCouponCode] = useState("")
   const [couponApplied, setCouponApplied] = useState(false)
   const [discount, setDiscount] = useState(0)
+  const [cartTotal, setCartTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [cartItems, setCartItems] = useState([])
+
+  useEffect(() => {
+    const fetchCartItems = async () => {
+      try {
+        setLoading(true)
+        setError("")
+        const response = await axios.get("http://localhost:8000/api/cart", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        })
+        setCartItems(response.data.items)
+      } catch (err) {
+        toast.error("Failed to fetch cart items")
+
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCartItems()
+  }, [])
+
+  useEffect(() => {
+    const total = cartItems.reduce((sum, item) => {
+      const priceAfterDiscount = item.price * (1 - (item.discount || 0) / 100)
+      return sum + priceAfterDiscount * item.quantity
+    }, 0)
+    setCartTotal(total)
+  }, [cartItems])
 
   const handleApplyCoupon = () => {
     if (couponCode.toLowerCase() === "discount10") {
       setCouponApplied(true)
       setDiscount(cartTotal * 0.1)
+      toast.success("Coupon applied successfully!")
     } else {
-      alert("Invalid coupon code")
+      toast.error("Invalid coupon code")
     }
   }
 
-  const handleQuantityChange = (productId, newQuantity) => {
-    updateQuantity(productId, Number.parseInt(newQuantity))
+  const handleQuantityChange = async (productId, newQuantity) => {
+    try {
+      await axios.put(
+        `http://localhost:8000/api/cart/${productId}`,
+        { quantity: Number(newQuantity) },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      )
+
+      setCartItems((prev) =>
+        prev.map((item) =>
+          item.id === productId ? { ...item, quantity: Number(newQuantity) } : item
+        )
+      )
+      toast.success("Quantity updated")
+    } catch (err) {
+      toast.error("Failed to update quantity")
+    }
   }
 
-  const handleRemoveItem = (productId) => {
-    removeFromCart(productId)
+  const handleRemoveItem = async (productId) => {
+    try {
+      await axios.delete(`http://localhost:8000/api/cart/${productId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+
+      setCartItems((prev) => prev.filter((item) => item.id !== productId))
+      toast.success("Item removed from cart")
+    } catch (err) {
+      toast.error("Failed to remove item")
+    }
+  }
+
+  const clearCart = async () => {
+    try {
+      await axios.post(
+        "http://localhost:8000/api/cart/clear",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      )
+      setCartItems([])
+      toast.success("Cart cleared successfully")
+    } catch (err) {
+ 
+      toast.error("Failed to clear cart")
+    }
   }
 
   const subtotal = cartTotal
@@ -38,11 +123,20 @@ export default function CartPage() {
   const total = subtotal + shipping + tax - discount
 
   return (
-    <div className={`min-h-screen ${theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
+    <>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
+    <div
+      className={`min-h-screen ${
+        theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"
+      }`}
+    >
       <div className="container mx-auto px-4 py-8">
+
+        {loading && <div className="text-center text-gray-500">Loading cart...</div>}
+
         <h1 className="text-2xl md:text-3xl font-bold mb-8">Shopping Cart</h1>
 
-        {cartItems.length === 0 ? (
+        {cartItems.length === 0 && !loading ? (
           <div className="text-center py-12">
             <div className="flex justify-center mb-4">
               <ShoppingBag size={64} className="text-gray-400" />
@@ -113,11 +207,11 @@ export default function CartPage() {
                                       ${(item.price * (1 - item.discount / 100)).toFixed(2)}
                                     </span>
                                     <span className="ml-2 text-sm line-through text-gray-500">
-                                      ${item.price.toFixed(2)}
+                                      ${Number(item.price).toFixed(2)}
                                     </span>
                                   </>
                                 ) : (
-                                  <span className="font-bold">${item.price.toFixed(2)}</span>
+                                  <span className="font-bold">${Number(item.price).toFixed(2)}</span>
                                 )}
                               </div>
 
@@ -248,5 +342,6 @@ export default function CartPage() {
         )}
       </div>
     </div>
+    </>
   )
 }

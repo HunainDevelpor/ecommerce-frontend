@@ -9,19 +9,36 @@ import ProductCard from "@/components/ProductCard"
 import FeaturedCarousel from "@/components/FeaturedCarousel"
 import { useTheme } from "@/contexts/ThemeContext"
 import { sampleProducts } from "@/data/products"
-
+import axios from "axios"
 export default function Home() {
   const { theme } = useTheme()
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [newArrivals, setNewArrivals] = useState([])
 
-  useEffect(() => {
-    // Filter featured products
-    setFeaturedProducts(sampleProducts.filter((product) => product.featured).slice(0, 6))
 
-    // Get new arrivals
-    setNewArrivals(sampleProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 4))
-  }, [])
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const res = await axios.get("http://localhost:8000/api/products/get")
+      const products = res.data
+
+      // Filter featured products
+      const featured = products.filter((product) => product.featured).slice(0, 6)
+      setFeaturedProducts(featured)
+
+      // Get new arrivals
+      const newArrivals = [...products]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 4)
+      setNewArrivals(newArrivals)
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    }
+  }
+
+  fetchProducts()
+}, [])
+
 
   return (
     <div className={`min-h-screen ${theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}>

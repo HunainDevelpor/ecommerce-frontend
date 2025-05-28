@@ -9,44 +9,85 @@ import { useTheme } from "@/contexts/ThemeContext"
 import { useCart } from "@/contexts/CartContext"
 import { useWishlist } from "@/contexts/WishlistContext"
 import { useToast } from "@/contexts/ToastContext"
-
+import axios from "axios"
 export default function ProductCard({ product }) {
   const { theme } = useTheme()
-  const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
   const { showToast } = useToast()
   const [isHovered, setIsHovered] = useState(false)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false)
 
-  const handleAddToCart = (e) => {
-    e.preventDefault()
-    setIsAddingToCart(true)
-
-    // Simulate a delay to show loading state
-    setTimeout(() => {
-      addToCart(product)
-      setIsAddingToCart(false)
+  const handleAddToCart = async (e) => {
+  e.preventDefault()
+  setIsAddingToCart(true)
+  const gettoken = localStorage.getItem("token")
+  if (!gettoken) {    
+    showToast("Please login to add items to cart", "error")
+    setIsAddingToCart(false)
+    return
+  }
+  try {
+    const response = await axios.post("http://localhost:8000/api/cart/add", {
+      productId: product.id,
+      quantity: 1,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${gettoken}`,
+      },
+    }
+  
+  )
+    if (response.status === 200) {
       showToast(`${product.name} added to cart`, "success")
-    }, 500)
+      setIsAddingToCart(false)
+      
+    }
+  } catch (error) {
+    console.error("Add to cart failed:", error)
+    showToast(`Failed to add ${product.name} to cart`, "error")
+    setIsAddingToCart(false)
   }
 
-  const handleToggleWishlist = (e) => {
-    e.preventDefault()
-    setIsTogglingWishlist(true)
+}
 
-    // Simulate a delay to show loading state
-    setTimeout(() => {
-      if (isInWishlist(product.id)) {
-        removeFromWishlist(product.id)
-        showToast(`${product.name} removed from wishlist`, "info")
-      } else {
-        addToWishlist(product)
-        showToast(`${product.name} added to wishlist`, "success")
-      }
-      setIsTogglingWishlist(false)
-    }, 500)
+
+ const handleToggleWishlist = async (e) => {
+  e.preventDefault()
+  setIsTogglingWishlist(true)
+
+  const token = localStorage.getItem("token")
+  if (!token) {
+    showToast("Please login to manage wishlist", "error")
+    setIsTogglingWishlist(false)
+    return
   }
+
+  try {
+    if (isInWishlist(product.id)) {
+      // Remove from wishlist
+      await axios.delete(`http://localhost:8000/api/wishlist/${product.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      removeFromWishlist(product.id)
+      showToast(`${product.name} removed from wishlist`, "info")
+    } else {
+      // Add to wishlist
+      await axios.post(`http://localhost:8000/api/wishlist/${product.id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      addToWishlist(product)
+      showToast(`${product.name} added to wishlist`, "success")
+    }
+  } catch (error) {
+    console.error("Wishlist toggle error:", error)
+    showToast("An error occurred while updating wishlist", "error")
+  }
+
+  setIsTogglingWishlist(false)
+}
+
 
   return (
     <motion.div
@@ -170,11 +211,15 @@ export default function ProductCard({ product }) {
           <div className="flex items-center">
             {product.discount > 0 ? (
               <>
-                <span className="font-bold text-lg">${(product.price * (1 - product.discount / 100)).toFixed(2)}</span>
-                <span className="ml-2 text-sm line-through text-gray-500">${product.price.toFixed(2)}</span>
-              </>
+             <span className="font-bold text-lg">
+      ${Number(product.price * (1 - product.discount / 100)).toFixed(2)}
+      </span>
+      <span className="ml-2 text-sm line-through text-gray-500">
+      ${Number(product.price).toFixed(2)}
+      </span>
+ </>
             ) : (
-              <span className="font-bold text-lg">${product.price.toFixed(2)}</span>
+              <span className="font-bold text-lg">${Number(product.price).toFixed(2)}</span>
             )}
           </div>
         </div>

@@ -8,7 +8,7 @@ import Image from "next/image"
 import { useTheme } from "@/contexts/ThemeContext"
 import { sampleProducts } from "@/data/products"
 import ProductCard from "@/components/ProductCard"
-
+import axios from "axios"
 export default function DealsPage() {
   const { theme } = useTheme()
   const [discountedProducts, setDiscountedProducts] = useState([])
@@ -20,21 +20,26 @@ export default function DealsPage() {
     seconds: 0,
   })
 
-  useEffect(() => {
-    // Get all products with discounts
-    const allDiscounted = sampleProducts.filter((product) => product.discount > 0)
+useEffect(() => {
+  const fetchDiscountedProducts = async () => {
+    try {
+      const res = await axios.get("http://localhost:8000/api/products/get")
+      const products = res.data
 
-    // Sort by discount percentage (highest first)
-    const sortedByDiscount = [...allDiscounted].sort((a, b) => b.discount - a.discount)
+      const allDiscounted = products.filter((product) => product.discount > 0)
+      const sortedByDiscount = [...allDiscounted].sort((a, b) => b.discount - a.discount)
 
-    setDiscountedProducts(allDiscounted)
+      setDiscountedProducts(allDiscounted)
+      setFlashSaleProducts(sortedByDiscount.slice(0, 4))
+      setClearanceProducts(allDiscounted.sort(() => 0.5 - Math.random()).slice(0, 3))
+    } catch (error) {
+      console.error("Error fetching discounted products:", error)
+    }
+  }
 
-    // Flash sale - top 4 discounted products
-    setFlashSaleProducts(sortedByDiscount.slice(0, 4))
+  fetchDiscountedProducts()
+}, [])
 
-    // Clearance - random selection of discounted products
-    setClearanceProducts(allDiscounted.sort(() => 0.5 - Math.random()).slice(0, 3))
-  }, [])
 
   // Countdown timer
   useEffect(() => {
@@ -254,7 +259,7 @@ export default function DealsPage() {
                         <span className="font-bold text-red-500">
                           ${(product.price * (1 - product.discount / 100)).toFixed(2)}
                         </span>
-                        <span className="ml-2 text-xs line-through text-gray-500">${product.price.toFixed(2)}</span>
+                        <span className="ml-2 text-xs line-through text-gray-500">${Number(product.price).toFixed(2)}</span>
                       </div>
                     </div>
                   </Link>

@@ -7,8 +7,7 @@ import Link from "next/link"
 import { useTheme } from "@/contexts/ThemeContext"
 import { useCart } from "@/contexts/CartContext"
 import { useWishlist } from "@/contexts/WishlistContext"
-import { sampleProducts } from "@/data/products"
-
+import axios from "axios"
 export default function Header() {
   const { theme, toggleTheme } = useTheme()
   const { cartItems } = useCart()
@@ -18,7 +17,7 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
-
+const [products, setProducts] = useState([])
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10)
@@ -27,17 +26,30 @@ export default function Header() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const res = await axios.get("http://localhost:8000/api/products/get")
+      setProducts(res.data)
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    }
+  }
+
+  fetchProducts()
+}, [])
 
   useEffect(() => {
-    if (searchQuery.length > 1) {
-      const filtered = sampleProducts
-        .filter((product) => product.name.toLowerCase().includes(searchQuery.toLowerCase()))
-        .slice(0, 5)
-      setSearchSuggestions(filtered)
-    } else {
-      setSearchSuggestions([])
-    }
-  }, [searchQuery])
+  if (searchQuery.length > 1) {
+    const filtered = products
+      .filter((product) => product.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      .slice(0, 5)
+    setSearchSuggestions(filtered)
+  } else {
+    setSearchSuggestions([])
+  }
+}, [searchQuery, products])
+
 
   return (
     <header

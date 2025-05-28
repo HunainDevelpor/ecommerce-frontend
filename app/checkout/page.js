@@ -1,15 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronRight, Check } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { useTheme } from "@/contexts/ThemeContext"
 import { useCart } from "@/contexts/CartContext"
-
+import {toast,ToastContainer} from 'react-toastify' // ✅ Import toast
+import 'react-toastify/dist/ReactToastify.css';
+import axios from "axios"
 export default function CheckoutPage() {
   const { theme } = useTheme()
-  const { cartItems, cartTotal, clearCart } = useCart()
+  const { cartItems, cartTotal,refreshCart } = useCart()
+  useEffect(() => {
+    refreshCart()
+  }, [refreshCart])
+
   const [activeStep, setActiveStep] = useState(1)
   const [formData, setFormData] = useState({
     // Shipping Information
@@ -21,7 +27,7 @@ export default function CheckoutPage() {
     city: "",
     state: "",
     zipCode: "",
-    country: "United States",
+    country: "Pakistan",
 
     // Payment Information
     cardName: "",
@@ -93,16 +99,46 @@ export default function CheckoutPage() {
     window.scrollTo(0, 0)
   }
 
-  const handleSubmitOrder = () => {
-    if (validateStep(activeStep)) {
-      // Simulate order processing
-      setTimeout(() => {
-        setOrderNumber(`ORD-${Math.floor(100000 + Math.random() * 900000)}`)
-        setOrderComplete(true)
-        clearCart()
-      }, 1500)
+  const handleSubmitOrder = async () => {
+  if (validateStep(activeStep)) {
+    try {
+      const response = await axios.post("http://localhost:8000/api/orders", {
+        shippingInfo: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country,
+        },
+        paymentInfo: {
+          cardName: formData.cardName,
+          cardNumber: formData.cardNumber,
+          expiryDate: formData.expiryDate,
+          cvv: formData.cvv,
+        },
+        items: cartItems,
+        totalAmount: total,
+      },{
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  }
+    )
+
+      // Handle success (order placed)
+      setOrderNumber(response.data.orderId || `ORD-${Math.floor(100000 + Math.random() * 900000)}`)
+      setOrderComplete(true)
+      toast.success("Order placed successfully!")
+    } catch (error) {
+      console.error("Order failed:", error)
+      toast.error("There was an error placing your order. Please try again.")
     }
   }
+}
 
   const subtotal = cartTotal
   const shipping = cartTotal > 100 ? 0 : 10
@@ -110,6 +146,17 @@ export default function CheckoutPage() {
   const total = subtotal + shipping + tax
 
   if (orderComplete) {
+    <ToastContainer
+      position="top-right"
+      autoClose={3000}
+      hideProgressBar={false}
+      newestOnTop={false}
+      closeOnClick
+      rtl={false}
+      pauseOnFocusLoss
+      draggable
+      pauseOnHover
+    />
     return (
       <div className={`min-h-screen ${theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
         <div className="container mx-auto px-4 py-12">
@@ -379,6 +426,7 @@ export default function CheckoutPage() {
                       <option value="United Kingdom">United Kingdom</option>
                       <option value="Australia">Australia</option>
                       <option value="Germany">Germany</option>
+                      <option value="Pakistan">Pakistan</option>
                     </select>
                   </div>
 
@@ -538,7 +586,7 @@ export default function CheckoutPage() {
                     <div className={`p-4 rounded-md ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"}`}>
                       <p>{formData.cardName}</p>
                       <p>Card ending in {formData.cardNumber.slice(-4)}</p>
-                      <p>Expires {formData.expiryDate}</p>
+                      <p className="text-red-600">Expires {formData.expiryDate}</p>
                     </div>
                   </div>
 

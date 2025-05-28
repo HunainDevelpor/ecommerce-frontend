@@ -1,47 +1,103 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { User, Package, Heart, CreditCard, LogOut, Bell, ChevronRight } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "@/contexts/ThemeContext"
 import { useWishlist } from "@/contexts/WishlistContext"
+import { toast } from "sonner"
+import axios from "axios"
 
 export default function AccountPage() {
   const { theme } = useTheme()
   const { wishlistItems } = useWishlist()
   const [activeTab, setActiveTab] = useState("dashboard")
+  const [userdata, setUserdata] = useState([])
+  const [orders, setOrders] = useState([])
+  const [ordersitem, setOrdersitem] = useState([])
+  const [shippingInfo, setShippingInfo] = useState([])
+useEffect(() => {
+  const getUser=async()=>{
+    const userData=await axios.get("http://localhost:8000/api/user/profile", {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`
+    }
+    
+
+
+  })
+  const Orders=await axios.get("http://localhost:8000/api/orders", {  
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`
+    }
+  })
+  if (Orders.status === 200) {
+    setOrders(Orders.data)
+    
+    console.log("Orders fetched successfully", Orders.data)
+  }else {
+    console.error("Failed to fetch orders", Orders.statusText)
+  }
+
+  // const Ordersitem=await axios.get(`http://localhost:8000/api/orders/${orders.order_id}`, {
+  //   headers: {
+  //     Authorization: `Bearer ${localStorage.getItem("token")}`
+  //   } 
+  // })
+  // if (Ordersitem.status === 200) {
+  //   setOrdersitem(Ordersitem.data)
+  //   console.log("Orders items fetched successfully", Ordersitem.data)
+  // }else {
+  //   console.error("Failed to fetch orders items", Ordersitem.statusText)
+  // }
+  
+
+  if (userData.status === 200) {
+    setUserdata(userData.data)
+    console.log("User data fetched successfully", userData.data)
+  }else {
+
+    console.error("Failed to fetch user data", userData.statusText)
+  }
+}
+  getUser()
+}, [])
+
+
 
   // Mock user data
+  const logout=(e)=>{
+   
+    try{
+      e.preventDefault()
+      // Simulate API call to logout the user
+      axios.post("http://localhost:8000/api/auth/logout").then((response) => {
+        if (response.status === 200) {
+           // Handle successful logout
+          localStorage.removeItem("token")
+          toast.success("Logged out successfully")
+          console.log("Logged out successfully")
+           window.location.href = "/auth/login"
+        }else{
+          // Handle error
+    
+          toast.error("Logout failed")
+        }
+      })
+    }catch (error) {
+      
+      console.error("Logout error", error)
+    }
+
+  }
   const user = {
-    name: "John Doe",
-    email: "john.doe@example.com",
+    name: userdata.name || "John Doe",
+    email: userdata.email || "john.doe@example.com",
     avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop",
     joined: "January 2023",
-    orders: [
-      {
-        id: "ORD-123456",
-        date: "2023-12-15",
-        status: "Delivered",
-        total: 249.97,
-        items: 3,
-      },
-      {
-        id: "ORD-123455",
-        date: "2023-11-28",
-        status: "Processing",
-        total: 79.99,
-        items: 1,
-      },
-      {
-        id: "ORD-123454",
-        date: "2023-10-05",
-        status: "Delivered",
-        total: 129.98,
-        items: 2,
-      },
-    ],
+    orders: orders,
     addresses: [
       {
         id: 1,
@@ -149,10 +205,10 @@ export default function AccountPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {user.orders.slice(0, 3).map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap">{order.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{order.date}</td>
+                  {user.orders.slice(0, 3).map((order,key) => (
+                    <tr key={key} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap">{order.order_id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{order.order_date}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -164,7 +220,7 @@ export default function AccountPage() {
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">${order.total.toFixed(2)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">${Number(order.total_amount).toFixed(2)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button className="text-emerald-600 hover:text-emerald-700">View</button>
                       </td>
@@ -344,10 +400,10 @@ export default function AccountPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {user.orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap">{order.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{order.date}</td>
+                {user.orders.map((order,key) => (
+                  <tr key={key} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 whitespace-nowrap">{order.order_id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.order_date}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -360,7 +416,7 @@ export default function AccountPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{order.items}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">${order.total.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">${Number(order.total_amount).toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button className="text-emerald-600 hover:text-emerald-700 mr-3">View</button>
                       {order.status === "Delivered" && (
@@ -419,7 +475,7 @@ export default function AccountPage() {
                     {item.discount > 0 ? (
                       <>
                         <span className="font-bold">${(item.price * (1 - item.discount / 100)).toFixed(2)}</span>
-                        <span className="ml-2 text-sm line-through text-gray-500">${item.price.toFixed(2)}</span>
+                        <span className="ml-2 text-sm line-through text-gray-500">${Number(item.price).toFixed(2)}</span>
                       </>
                     ) : (
                       <span className="font-bold">${item.price.toFixed(2)}</span>
@@ -620,6 +676,7 @@ export default function AccountPage() {
 
   return (
     <div className={`min-h-screen ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900"}`}>
+     
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center text-sm mb-6">
           <Link href="/" className="hover:text-emerald-600 transition-colors">
@@ -670,15 +727,16 @@ export default function AccountPage() {
                     </button>
                   ))}
 
-                  <Link
-                    href="/auth/login"
-                    className={`flex items-center w-full px-4 py-2 rounded-md mb-1 transition-colors text-red-500 hover:${
-                      theme === "dark" ? "bg-gray-700" : "bg-gray-100"
-                    }`}
-                  >
-                    <LogOut size={18} className="mr-3" />
-                    Logout
-                  </Link>
+<button
+  onClick={logout}
+  className={`flex items-center w-full px-4 py-2 rounded-md mb-1 transition-colors text-red-500 hover:${
+    theme === "dark" ? "bg-gray-700" : "bg-gray-100"
+  }`}
+>
+  <LogOut size={18} className="mr-3" />
+  Logout
+</button>
+
                 </nav>
               </div>
             </div>

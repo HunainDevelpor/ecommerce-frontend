@@ -7,6 +7,7 @@ import ProductCard from "@/components/ProductCard"
 import ProductListItem from "@/components/ProductListItem"
 import { useTheme } from "@/contexts/ThemeContext"
 import { sampleProducts } from "@/data/products"
+import axios from "axios"
 
 export default function ProductsPage() {
   const { theme } = useTheme()
@@ -24,10 +25,24 @@ export default function ProductsPage() {
   })
   const [sortOption, setSortOption] = useState("featured")
 
-  useEffect(() => {
-    setProducts(sampleProducts)
-    setFilteredProducts(sampleProducts)
-  }, [])
+
+
+// ...
+
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const res = await axios.get("http://localhost:8000/api/products/get")
+      setProducts(res.data)
+      setFilteredProducts(res.data)
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    }
+  }
+
+  fetchProducts()
+}, [])
+
 
   useEffect(() => {
     let result = [...products]
